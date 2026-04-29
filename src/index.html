@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ScreenFace Recorder</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="panel">
+          <h1>ScreenFace Recorder</h1>
+          <p class="muted">
+            Record your screen + face cam and save straight to MP4.
+          </p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Permissions</h2>
+            <button id="refreshPermissionsBtn" class="ghost-btn">Refresh</button>
+          </div>
+          <div id="permissionsList" class="permissions-list"></div>
+          <div class="permission-actions">
+            <button id="requestCameraBtn" class="secondary-btn">Allow Camera</button>
+            <button id="requestMicBtn" class="secondary-btn">Allow Mic</button>
+            <button id="openScreenSettingsBtn" class="secondary-btn">
+              Screen Settings
+            </button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Capture Source</h2>
+            <button id="refreshSourcesBtn" class="ghost-btn">Refresh</button>
+          </div>
+          <div class="source-selected-row">
+            <span class="label">Selected</span>
+            <span id="selectedSourceText" class="value">None selected</span>
+          </div>
+          <button id="chooseSourceBtn" class="primary-btn">Choose Screen / Window</button>
+        </div>
+
+        <div class="panel">
+          <h2>Camera</h2>
+          <label class="field">
+            <span>Camera Device</span>
+            <select id="cameraSelect"></select>
+          </label>
+          <label class="field">
+            <span>Microphone</span>
+            <select id="micSelect"></select>
+          </label>
+          <button id="enableCameraBtn" class="secondary-btn">Enable Camera</button>
+        </div>
+
+        <div class="panel">
+          <h2>Layout</h2>
+
+          <label class="field">
+            <span>Aspect Ratio</span>
+            <select id="aspectRatioSelect">
+              <option value="16:9">16:9</option>
+              <option value="9:16">9:16</option>
+              <option value="1:1">1:1</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Face Shape</span>
+            <select id="cameraShapeSelect">
+              <option value="circle">Circle</option>
+              <option value="square">Square</option>
+              <option value="rectangle">Rectangle</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Overlay Position</span>
+            <select id="overlayPositionSelect">
+              <option value="bottom-left">Bottom Left</option>
+              <option value="bottom-right">Bottom Right</option>
+              <option value="top-right">Top Right</option>
+              <option value="top-left">Top Left</option>
+              <option value="vertical-stack">Vertical Stack</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Screen Framing</span>
+            <select id="screenCropAnchorSelect">
+              <option value="left">Left</option>
+              <option value="center" selected>Center</option>
+              <option value="right">Right</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Camera Size</span>
+            <input id="cameraSizeRange" type="range" min="16" max="42" value="24" />
+          </label>
+        </div>
+
+        <div class="panel">
+          <h2>Record</h2>
+          <div class="record-row">
+            <button id="startRecordingBtn" class="primary-btn">Start Recording</button>
+            <button id="stopRecordingBtn" class="danger-btn" disabled>Stop</button>
+          </div>
+          <div class="audio-tester">
+            <div class="audio-tester-row">
+              <span class="label">Mic Input</span>
+              <span id="micTesterStatus" class="audio-status-badge">Off</span>
+            </div>
+            <div class="audio-meter">
+              <div id="micTesterLevel" class="audio-meter-fill"></div>
+            </div>
+            <div class="audio-tester-row">
+              <span class="label">Recording Audio Track</span>
+              <span id="recordingAudioStatus" class="audio-status-badge">Idle</span>
+            </div>
+          </div>
+          <div id="statusText" class="status-pill">Idle</div>
+          <div id="savePathText" class="save-path muted">No output selected yet</div>
+        </div>
+      </aside>
+
+      <main class="main-stage">
+        <div class="stage-topbar">
+          <div>
+            <strong>Preview</strong>
+            <span class="muted"> draggable face overlay in wide layouts </span>
+          </div>
+        </div>
+
+        <div class="preview-wrap">
+          <canvas id="previewCanvas" width="960" height="540"></canvas>
+        </div>
+
+        <video id="screenVideo" autoplay playsinline muted hidden></video>
+        <video id="cameraVideo" autoplay playsinline muted hidden></video>
+      </main>
+    </div>
+
+    <div id="sourceModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>Choose a screen or window</h2>
+          <button id="closeSourceModalBtn" class="ghost-btn">Close</button>
+        </div>
+
+        <div class="modal-tabs">
+          <button class="tab-btn active" data-filter="all">All</button>
+          <button class="tab-btn" data-filter="screen">Screens</button>
+          <button class="tab-btn" data-filter="window">Windows</button>
+        </div>
+
+        <div id="sourcesGrid" class="sources-grid"></div>
+      </div>
+    </div>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

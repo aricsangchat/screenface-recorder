@@ -1,0 +1,21 @@
+{
+  "name": "screenface-recorder",
+  "version": "0.1.0",
+  "description": "Screen + face recorder for Mac with aspect ratio layouts and MP4 export",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron ."
+  },
+  "keywords": [
+    "electron",
+    "screen-recorder",
+    "camera-overlay",
+    "macos"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^37.2.0"
+  }
+}
