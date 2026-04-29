@@ -20,6 +20,7 @@ const els = {
   aspectRatioSelect: document.getElementById("aspectRatioSelect"),
   cameraShapeSelect: document.getElementById("cameraShapeSelect"),
   overlayPositionSelect: document.getElementById("overlayPositionSelect"),
+  screenFitModeSelect: document.getElementById("screenFitModeSelect"),
   screenCropAnchorSelect: document.getElementById("screenCropAnchorSelect"),
   cameraSizeRange: document.getElementById("cameraSizeRange"),
 
@@ -71,6 +72,7 @@ const state = {
     cameraShape: "circle",
     overlayPosition: "bottom-left",
     cameraSizePercent: 24,
+    screenFitMode: "blur",
     screenCropAnchor: "center",
     overlayX: 0.04,
     overlayY: 0.72,
@@ -524,14 +526,6 @@ async function getSelectedDisplayMediaStream() {
         ideal: 30,
         max: 30,
       },
-      width: {
-        ideal: 1920,
-        max: 1920,
-      },
-      height: {
-        ideal: 1080,
-        max: 1080,
-      },
     },
   });
 }
@@ -648,6 +642,31 @@ function roundedRectPath(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
+function drawContainVideo(ctx, video, x, y, width, height) {
+  const vw = video.videoWidth || 1;
+  const vh = video.videoHeight || 1;
+
+  const scale = Math.min(width / vw, height / vh);
+
+  const drawWidth = vw * scale;
+  const drawHeight = vh * scale;
+
+  const offsetX = x + (width - drawWidth) / 2;
+  const offsetY = y + (height - drawHeight) / 2;
+
+  ctx.drawImage(
+    video,
+    0,
+    0,
+    vw,
+    vh,
+    offsetX,
+    offsetY,
+    drawWidth,
+    drawHeight
+  );
+}
+
 function drawCoverVideo(ctx, video, x, y, width, height, options = {}) {
   const vw = video.videoWidth || 1;
   const vh = video.videoHeight || 1;
@@ -673,6 +692,48 @@ function drawCoverVideo(ctx, video, x, y, width, height, options = {}) {
   }
 
   ctx.drawImage(video, sx, sy, sWidth, sHeight, x, y, width, height);
+}
+
+function drawContainVideo(ctx, video, x, y, width, height) {
+  const vw = video.videoWidth || 1;
+  const vh = video.videoHeight || 1;
+  const scale = Math.min(width / vw, height / vh);
+  const drawWidth = Math.round(vw * scale);
+  const drawHeight = Math.round(vh * scale);
+  const drawX = Math.round(x + (width - drawWidth) / 2);
+  const drawY = Math.round(y + (height - drawHeight) / 2);
+
+  ctx.drawImage(video, 0, 0, vw, vh, drawX, drawY, drawWidth, drawHeight);
+}
+
+function drawBlurFillVideo(ctx, video, x, y, width, height, options = {}) {
+  ctx.save();
+  ctx.filter = "blur(26px) brightness(0.72) saturate(1.15)";
+  drawCoverVideo(ctx, video, x - 40, y - 40, width + 80, height + 80, options);
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = "rgba(5, 11, 20, 0.18)";
+  ctx.fillRect(x, y, width, height);
+  ctx.restore();
+
+  drawContainVideo(ctx, video, x, y, width, height);
+}
+
+function drawScreenVideo(ctx, video, x, y, width, height) {
+  const options = { horizontalAnchor: state.layout.screenCropAnchor };
+
+  if (state.layout.screenFitMode === "cover") {
+    drawCoverVideo(ctx, video, x, y, width, height, options);
+    return;
+  }
+
+  if (state.layout.screenFitMode === "contain") {
+    drawContainVideo(ctx, video, x, y, width, height);
+    return;
+  }
+
+  drawBlurFillVideo(ctx, video, x, y, width, height, options);
 }
 
 function getOverlayRect(canvasWidth, canvasHeight) {
@@ -745,9 +806,7 @@ function drawFrame(ctx, canvas) {
     const topHeight = Math.round(height * 0.73);
 
     if (hasScreen) {
-      drawCoverVideo(ctx, els.screenVideo, 0, 0, width, topHeight, {
-        horizontalAnchor: state.layout.screenCropAnchor,
-      });
+        drawScreenVideo(ctx, els.screenVideo, 0, 0, width, topHeight);
     } else {
       ctx.fillStyle = "#0d1829";
       ctx.fillRect(0, 0, width, topHeight);
@@ -772,12 +831,15 @@ function drawFrame(ctx, canvas) {
   }
 
   if (hasScreen) {
-    drawCoverVideo(ctx, els.screenVideo, 0, 0, width, height, {
-      horizontalAnchor:
-        state.layout.aspectRatio === "9:16"
-          ? state.layout.screenCropAnchor
-          : "center",
-    });
+    if (state.layout.aspectRatio === "16:9" || state.layout.aspectRatio === "1:1") {
+      // Preserve full screen, no stretch
+      drawContainVideo(ctx, els.screenVideo, 0, 0, width, height);
+    } else {
+      // For vertical (reels), keep crop behavior
+      drawCoverVideo(ctx, els.screenVideo, 0, 0, width, height, {
+        horizontalAnchor: state.layout.screenCropAnchor,
+      });
+    }
   } else {
     ctx.fillStyle = "#0d1829";
     ctx.fillRect(0, 0, width, height);

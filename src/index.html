@@ -93,7 +93,16 @@
           </label>
 
           <label class="field">
-            <span>Screen Framing</span>
+            <span>Screen Fit</span>
+            <select id="screenFitModeSelect">
+              <option value="blur" selected>Blur Fill</option>
+              <option value="contain">Contain</option>
+              <option value="cover">Crop Fill</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Crop Anchor</span>
             <select id="screenCropAnchorSelect">
               <option value="left">Left</option>
               <option value="center" selected>Center</option>
