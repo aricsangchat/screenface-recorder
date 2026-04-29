@@ -587,6 +587,21 @@ async function attachScreenStream(stream) {
   els.screenVideo.srcObject = stream;
   await els.screenVideo.play().catch(() => {});
 
+  await new Promise((resolve) => {
+    if (els.screenVideo.videoWidth && els.screenVideo.videoHeight) return resolve();
+    els.screenVideo.onloadedmetadata = () => resolve();
+    setTimeout(resolve, 500);
+  });
+
+  console.log(
+    "[ScreenFace][screen-video-size]",
+    JSON.stringify({
+      videoWidth: els.screenVideo.videoWidth,
+      videoHeight: els.screenVideo.videoHeight,
+      ratio: els.screenVideo.videoWidth / Math.max(1, els.screenVideo.videoHeight),
+    })
+  );
+
   const [videoTrack] = stream.getVideoTracks();
   if (videoTrack) {
     logDiag("screen-track-selected", {
@@ -707,24 +722,57 @@ function drawContainVideo(ctx, video, x, y, width, height) {
 }
 
 function drawBlurFillVideo(ctx, video, x, y, width, height, options = {}) {
+  // Background: intentionally enlarged/cropped/blurred
   ctx.save();
-  ctx.filter = "blur(26px) brightness(0.72) saturate(1.15)";
-  drawCoverVideo(ctx, video, x - 40, y - 40, width + 80, height + 80, options);
+  ctx.filter = "blur(34px) brightness(0.62) saturate(1.2)";
+  drawCoverVideo(ctx, video, x - 80, y - 80, width + 160, height + 160, options);
   ctx.restore();
 
   ctx.save();
-  ctx.fillStyle = "rgba(5, 11, 20, 0.18)";
+  ctx.fillStyle = "rgba(5, 11, 20, 0.22)";
   ctx.fillRect(x, y, width, height);
   ctx.restore();
 
-  drawContainVideo(ctx, video, x, y, width, height);
+  // Foreground: actual screen, never stretched
+  const vw = video.videoWidth || 1;
+  const vh = video.videoHeight || 1;
+  const scale = Math.min(width / vw, height / vh);
+  const drawWidth = Math.round(vw * scale);
+  const drawHeight = Math.round(vh * scale);
+  const drawX = Math.round(x + (width - drawWidth) / 2);
+  const drawY = Math.round(y + (height - drawHeight) / 2);
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.45)";
+  ctx.shadowBlur = Math.round(width * 0.018);
+  ctx.shadowOffsetY = Math.round(height * 0.008);
+  ctx.drawImage(video, 0, 0, vw, vh, drawX, drawY, drawWidth, drawHeight);
+  ctx.restore();
+
+  ctx.save();
+  ctx.lineWidth = Math.max(2, Math.round(width * 0.002));
+  ctx.strokeStyle = "rgba(255,255,255,0.32)";
+  ctx.strokeRect(drawX, drawY, drawWidth, drawHeight);
+  ctx.restore();
 }
 
 function drawScreenVideo(ctx, video, x, y, width, height) {
   const options = { horizontalAnchor: state.layout.screenCropAnchor };
 
-  if (state.layout.screenFitMode === "cover") {
-    drawCoverVideo(ctx, video, x, y, width, height, options);
+  // Wide exports should never distort the source.
+  // Blur and contain both draw the full screen/window with original proportions.
+  if (state.layout.aspectRatio === "16:9") {
+    if (state.layout.screenFitMode === "cover") {
+      drawCoverVideo(ctx, video, x, y, width, height, options);
+      return;
+    }
+
+    if (state.layout.screenFitMode === "blur") {
+      drawBlurFillVideo(ctx, video, x, y, width, height, options);
+      return;
+    }
+
+    drawContainVideo(ctx, video, x, y, width, height);
     return;
   }
 
@@ -733,7 +781,12 @@ function drawScreenVideo(ctx, video, x, y, width, height) {
     return;
   }
 
-  drawBlurFillVideo(ctx, video, x, y, width, height, options);
+  if (state.layout.screenFitMode === "blur") {
+    drawBlurFillVideo(ctx, video, x, y, width, height, options);
+    return;
+  }
+
+  drawCoverVideo(ctx, video, x, y, width, height, options);
 }
 
 function getOverlayRect(canvasWidth, canvasHeight) {
