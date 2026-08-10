@@ -182,8 +182,10 @@ function updateCanvasSizes() {
   recordCanvas.width = record.width;
   recordCanvas.height = record.height;
 
+  // Do NOT force both CSS width and height. That can visually stretch preview.
   els.previewCanvas.style.width = `${preview.width}px`;
-  els.previewCanvas.style.height = `${preview.height}px`;
+  els.previewCanvas.style.height = "auto";
+  els.previewCanvas.style.aspectRatio = `${preview.width} / ${preview.height}`;
 }
 
 function permissionBadgeClass(status) {
@@ -519,6 +521,8 @@ async function chooseSource(source) {
 }
 
 async function getSelectedDisplayMediaStream() {
+  // Capture the real native screen/window shape.
+  // Do not force 1920x1080 here — that can crop/scale the source before we draw it.
   return navigator.mediaDevices.getDisplayMedia({
     audio: false,
     video: {

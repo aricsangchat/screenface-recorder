@@ -309,6 +309,8 @@ button:disabled {
   max-height: calc(100vh - 90px);
   width: auto;
   height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
   border-radius: 24px;
   border: 1px solid var(--border);
   background: #02060d;
