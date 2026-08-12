@@ -13,23 +13,17 @@
   <body>
     <div class="app-shell">
       <aside class="sidebar">
-        <div class="panel">
-          <h1>ScreenFace Recorder</h1>
-          <p class="muted">
-            Record your screen + face cam and save straight to MP4.
-          </p>
-        </div>
-
-        <div class="panel">
+        <div class="panel panel-tight">
           <div class="panel-header">
-            <h2>Permissions</h2>
-            <button id="refreshPermissionsBtn" class="ghost-btn">Refresh</button>
+            <div id="permissionsList" class="permissions-list"></div>
+            <button id="refreshPermissionsBtn" class="ghost-btn" title="Re-check permissions">
+              Refresh
+            </button>
           </div>
-          <div id="permissionsList" class="permissions-list"></div>
-          <div class="permission-actions">
-            <button id="requestCameraBtn" class="secondary-btn">Allow Camera</button>
-            <button id="requestMicBtn" class="secondary-btn">Allow Mic</button>
-            <button id="openScreenSettingsBtn" class="secondary-btn">
+          <div id="permissionActions" class="permission-actions hidden">
+            <button id="requestCameraBtn" class="secondary-btn hidden">Allow Camera</button>
+            <button id="requestMicBtn" class="secondary-btn hidden">Allow Mic</button>
+            <button id="openScreenSettingsBtn" class="secondary-btn hidden">
               Screen Settings
             </button>
           </div>
@@ -37,117 +31,101 @@
 
         <div class="panel">
           <div class="panel-header">
-            <h2>Capture Source</h2>
-            <button id="refreshSourcesBtn" class="ghost-btn">Refresh</button>
-          </div>
-          <div class="source-selected-row">
-            <span class="label">Selected</span>
+            <h2>Capture</h2>
             <span id="selectedSourceText" class="value">None selected</span>
           </div>
-          <button id="chooseSourceBtn" class="primary-btn">Choose Screen / Window</button>
-        </div>
+          <button id="chooseSourceBtn" class="primary-btn full">Choose Screen / Window</button>
 
-        <div class="panel">
-          <h2>Camera</h2>
-          <label class="field">
-            <span>Camera Device</span>
-            <select id="cameraSelect"></select>
-          </label>
-          <label class="field">
-            <span>Microphone</span>
-            <select id="micSelect"></select>
-          </label>
-          <button id="enableCameraBtn" class="secondary-btn">Enable Camera</button>
+          <div class="field-grid">
+            <label class="field">
+              <span>Camera</span>
+              <select id="cameraSelect"></select>
+            </label>
+            <label class="field">
+              <span>Microphone</span>
+              <select id="micSelect"></select>
+            </label>
+          </div>
+          <button id="enableCameraBtn" class="secondary-btn full">Enable Camera / Mic</button>
         </div>
 
         <div class="panel">
           <h2>Layout</h2>
 
-          <label class="field">
-            <span>Aspect Ratio</span>
-            <select id="aspectRatioSelect">
-              <option value="16:9">16:9</option>
-              <option value="9:16">9:16</option>
-              <option value="1:1">1:1</option>
-            </select>
-          </label>
+          <div class="field-grid">
+            <label class="field">
+              <span>Aspect Ratio</span>
+              <select id="aspectRatioSelect">
+                <option value="16:9">16:9</option>
+                <option value="9:16">9:16</option>
+                <option value="1:1">1:1</option>
+              </select>
+            </label>
 
-          <label class="field">
-            <span>Face Shape</span>
-            <select id="cameraShapeSelect">
-              <option value="circle">Circle</option>
-              <option value="square">Square</option>
-              <option value="rectangle">Rectangle</option>
-            </select>
-          </label>
+            <label class="field" id="cameraShapeField">
+              <span>Face Shape</span>
+              <select id="cameraShapeSelect">
+                <option value="circle">Circle</option>
+                <option value="square">Square</option>
+                <option value="rectangle">Rectangle</option>
+              </select>
+            </label>
 
-          <label class="field">
-            <span>Overlay Position</span>
-            <select id="overlayPositionSelect">
-              <option value="bottom-left">Bottom Left</option>
-              <option value="bottom-right">Bottom Right</option>
-              <option value="top-right">Top Right</option>
-              <option value="top-left">Top Left</option>
-              <option value="vertical-stack">Vertical Stack</option>
-            </select>
-          </label>
+            <label class="field" id="overlayPositionField">
+              <span>Face Position</span>
+              <select id="overlayPositionSelect">
+                <option value="bottom-left">Bottom Left</option>
+                <option value="bottom-right">Bottom Right</option>
+                <option value="top-right">Top Right</option>
+                <option value="top-left">Top Left</option>
+              </select>
+            </label>
 
-          <label class="field">
-            <span>Screen Fit</span>
-            <select id="screenFitModeSelect">
-              <option value="blur" selected>Blur Fill</option>
-              <option value="contain">Contain</option>
-              <option value="cover">Crop Fill</option>
-            </select>
-          </label>
+            <label class="field">
+              <span>Screen Fit</span>
+              <select id="screenFitModeSelect">
+                <option value="blur" selected>Blur Fill</option>
+                <option value="contain">Contain</option>
+                <option value="cover">Crop Fill</option>
+              </select>
+            </label>
 
-          <label class="field">
-            <span>Crop Anchor</span>
-            <select id="screenCropAnchorSelect">
-              <option value="left">Left</option>
-              <option value="center" selected>Center</option>
-              <option value="right">Right</option>
-            </select>
-          </label>
+            <label class="field" id="screenCropAnchorField">
+              <span>Crop Anchor</span>
+              <select id="screenCropAnchorSelect">
+                <option value="left">Left</option>
+                <option value="center" selected>Center</option>
+                <option value="right">Right</option>
+              </select>
+            </label>
 
-          <label class="field">
-            <span>Camera Size</span>
-            <input id="cameraSizeRange" type="range" min="16" max="42" value="24" />
-          </label>
+            <label class="field" id="cameraSizeField">
+              <span>Face Size</span>
+              <input id="cameraSizeRange" type="range" min="16" max="42" value="24" />
+            </label>
+          </div>
         </div>
 
-        <div class="panel">
-          <h2>Record</h2>
+        <div class="panel panel-record">
           <div class="record-row">
             <button id="startRecordingBtn" class="primary-btn">Start Recording</button>
             <button id="stopRecordingBtn" class="danger-btn" disabled>Stop</button>
           </div>
+
           <div class="audio-tester">
-            <div class="audio-tester-row">
-              <span class="label">Mic Input</span>
-              <span id="micTesterStatus" class="audio-status-badge">Off</span>
-            </div>
+            <span class="label">Mic</span>
             <div class="audio-meter">
               <div id="micTesterLevel" class="audio-meter-fill"></div>
             </div>
-            <div class="audio-tester-row">
-              <span class="label">Recording Audio Track</span>
-              <span id="recordingAudioStatus" class="audio-status-badge">Idle</span>
-            </div>
+            <span id="micTesterStatus" class="audio-status-badge">Off</span>
           </div>
+
           <div id="statusText" class="status-pill">Idle</div>
           <div id="savePathText" class="save-path muted">No output selected yet</div>
         </div>
       </aside>
 
       <main class="main-stage">
-        <div class="stage-topbar">
-          <div>
-            <strong>Preview</strong>
-            <span class="muted"> draggable face overlay in wide layouts </span>
-          </div>
-        </div>
-
         <div class="preview-wrap">
           <canvas id="previewCanvas" width="960" height="540"></canvas>
         </div>
@@ -161,7 +139,10 @@
       <div class="modal-card">
         <div class="modal-header">
           <h2>Choose a screen or window</h2>
-          <button id="closeSourceModalBtn" class="ghost-btn">Close</button>
+          <div class="modal-header-actions">
+            <button id="refreshSourcesBtn" class="ghost-btn">Refresh</button>
+            <button id="closeSourceModalBtn" class="ghost-btn">Close</button>
+          </div>
         </div>
 
         <div class="modal-tabs">

@@ -36,9 +36,11 @@ function appendRuntimeLog(line) {
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1180,
-    height: 900,
-    minWidth: 420,
-    minHeight: 620,
+    height: 820,
+    // The UI is laid out to fit the window with no scrolling, so the minimum
+    // has to be tall enough for the full sidebar.
+    minWidth: 900,
+    minHeight: 730,
     title: "ScreenFace Recorder",
     backgroundColor: "#081120",
     webPreferences: {
@@ -77,6 +79,7 @@ function createWindow() {
   appendRuntimeLog("[main:LOG] BrowserWindow created");
 
   mainWindow.loadFile(path.join(__dirname, "index.html"));
+
 }
 
 function safeNativeImageToDataURL(image) {

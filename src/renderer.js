@@ -4,6 +4,7 @@ const els = {
   cameraVideo: document.getElementById("cameraVideo"),
 
   permissionsList: document.getElementById("permissionsList"),
+  permissionActions: document.getElementById("permissionActions"),
   refreshPermissionsBtn: document.getElementById("refreshPermissionsBtn"),
   requestCameraBtn: document.getElementById("requestCameraBtn"),
   requestMicBtn: document.getElementById("requestMicBtn"),
@@ -24,13 +25,17 @@ const els = {
   screenCropAnchorSelect: document.getElementById("screenCropAnchorSelect"),
   cameraSizeRange: document.getElementById("cameraSizeRange"),
 
+  cameraShapeField: document.getElementById("cameraShapeField"),
+  overlayPositionField: document.getElementById("overlayPositionField"),
+  screenCropAnchorField: document.getElementById("screenCropAnchorField"),
+  cameraSizeField: document.getElementById("cameraSizeField"),
+
   startRecordingBtn: document.getElementById("startRecordingBtn"),
   stopRecordingBtn: document.getElementById("stopRecordingBtn"),
   statusText: document.getElementById("statusText"),
   savePathText: document.getElementById("savePathText"),
   micTesterStatus: document.getElementById("micTesterStatus"),
   micTesterLevel: document.getElementById("micTesterLevel"),
-  recordingAudioStatus: document.getElementById("recordingAudioStatus"),
 
   sourceModal: document.getElementById("sourceModal"),
   closeSourceModalBtn: document.getElementById("closeSourceModalBtn"),
@@ -182,9 +187,8 @@ function updateCanvasSizes() {
   recordCanvas.width = record.width;
   recordCanvas.height = record.height;
 
-  // Do NOT force both CSS width and height. That can visually stretch preview.
-  els.previewCanvas.style.width = `${preview.width}px`;
-  els.previewCanvas.style.height = "auto";
+  // Let CSS size the preview to the available stage area. Only the ratio is set
+  // here; a fixed pixel width would either overflow or waste space.
   els.previewCanvas.style.aspectRatio = `${preview.width} / ${preview.height}`;
 }
 
@@ -196,23 +200,40 @@ function permissionBadgeClass(status) {
   return "unknown";
 }
 
+function toggleHidden(el, hidden) {
+  if (!el) return;
+  el.classList.toggle("hidden", Boolean(hidden));
+}
+
 async function refreshPermissions() {
   const status = await window.electronAPI.getPermissionStatus();
 
   els.permissionsList.innerHTML = [
     ["Camera", status.camera],
-    ["Microphone", status.microphone],
+    ["Mic", status.microphone],
     ["Screen", status.screen],
   ]
     .map(
       ([label, value]) => `
-        <div class="permission-item">
-          <span>${label}</span>
-          <span class="permission-badge ${permissionBadgeClass(value)}">${escapeHtml(value)}</span>
-        </div>
+        <span class="permission-item" title="${escapeHtml(value)}">
+          <span class="permission-dot ${permissionBadgeClass(value)}"></span>${label}
+        </span>
       `
     )
     .join("");
+
+  // Only surface a request button when that permission still needs action.
+  const cameraNeedsAction = status.camera !== "granted";
+  const micNeedsAction = status.microphone !== "granted";
+  const screenNeedsAction = status.screen !== "granted";
+
+  toggleHidden(els.requestCameraBtn, !cameraNeedsAction);
+  toggleHidden(els.requestMicBtn, !micNeedsAction);
+  toggleHidden(els.openScreenSettingsBtn, !screenNeedsAction);
+  toggleHidden(
+    els.permissionActions,
+    !cameraNeedsAction && !micNeedsAction && !screenNeedsAction
+  );
 }
 
 async function requestCameraPermission() {
@@ -403,21 +424,6 @@ function updateAudioTesterUI() {
     setBadgeStatus(els.micTesterStatus, "Low", "warn");
   } else {
     setBadgeStatus(els.micTesterStatus, "Silent", "bad");
-  }
-
-  const hasRecordingAudioTrack =
-    state.recording &&
-    state.composedStream &&
-    state.composedStream
-      .getAudioTracks()
-      .some((track) => track.readyState === "live" && track.enabled);
-
-  if (!state.recording) {
-    setBadgeStatus(els.recordingAudioStatus, "Idle", "");
-  } else if (hasRecordingAudioTrack) {
-    setBadgeStatus(els.recordingAudioStatus, "Active", "good");
-  } else {
-    setBadgeStatus(els.recordingAudioStatus, "Missing", "bad");
   }
 }
 
@@ -1315,22 +1321,27 @@ function cleanupRecordingState() {
 function updateLayoutFromControls() {
   state.layout.aspectRatio = els.aspectRatioSelect.value;
   state.layout.cameraShape = els.cameraShapeSelect.value;
-  state.layout.overlayPosition = els.overlayPositionSelect.value;
   state.layout.screenFitMode = els.screenFitModeSelect.value;
   state.layout.screenCropAnchor = els.screenCropAnchorSelect.value;
   state.layout.cameraSizePercent = Number(els.cameraSizeRange.value);
 
-  if (state.layout.aspectRatio === "9:16" && state.layout.overlayPosition !== "vertical-stack") {
-    state.layout.overlayPosition = "vertical-stack";
-    els.overlayPositionSelect.value = "vertical-stack";
-  }
+  // 9:16 always stacks screen over camera; every other ratio uses an overlay.
+  // It was never independently selectable, so it is derived rather than shown.
+  const isStacked = state.layout.aspectRatio === "9:16";
+  state.layout.overlayPosition = isStacked
+    ? "vertical-stack"
+    : els.overlayPositionSelect.value;
 
-  if (state.layout.aspectRatio !== "9:16" && state.layout.overlayPosition === "vertical-stack") {
-    state.layout.overlayPosition = "bottom-left";
-    els.overlayPositionSelect.value = "bottom-left";
-  }
+  // Hide controls that the current mode ignores.
+  toggleHidden(els.overlayPositionField, isStacked);
+  toggleHidden(els.cameraShapeField, isStacked);
+  toggleHidden(els.cameraSizeField, isStacked);
+  toggleHidden(
+    els.screenCropAnchorField,
+    state.layout.screenFitMode === "contain"
+  );
 
-  if (state.layout.overlayPosition !== "vertical-stack") {
+  if (!isStacked) {
     if (state.layout.overlayPosition === "bottom-left") {
       state.layout.overlayX = 0.04;
       state.layout.overlayY = 0.72;
@@ -1431,6 +1442,7 @@ function bindEvents() {
   els.aspectRatioSelect.addEventListener("change", updateLayoutFromControls);
   els.cameraShapeSelect.addEventListener("change", updateLayoutFromControls);
   els.overlayPositionSelect.addEventListener("change", updateLayoutFromControls);
+  els.screenFitModeSelect.addEventListener("change", updateLayoutFromControls);
   els.screenCropAnchorSelect.addEventListener("change", updateLayoutFromControls);
   els.cameraSizeRange.addEventListener("input", updateLayoutFromControls);
 
