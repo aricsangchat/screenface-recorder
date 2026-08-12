@@ -12,6 +12,13 @@ const {
   shell,
 } = require("electron");
 
+// Keep the renderer running at full speed when the window is backgrounded,
+// occluded, or on another Space. Without these the draw loop stalls and the
+// recorded canvas freezes on whatever frame was last painted.
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+app.commandLine.appendSwitch("disable-background-timer-throttling");
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+
 let mainWindow = null;
 let activeRecording = null;
 let selectedDesktopSourceId = null;
@@ -39,8 +46,11 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      backgroundThrottling: false,
     },
   });
+
+  mainWindow.webContents.setBackgroundThrottling(false);
 
   mainWindow.webContents.on("console-message", (_event, ...args) => {
     let level = 0;

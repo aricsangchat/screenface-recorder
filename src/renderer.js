@@ -661,31 +661,6 @@ function roundedRectPath(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
-function drawContainVideo(ctx, video, x, y, width, height) {
-  const vw = video.videoWidth || 1;
-  const vh = video.videoHeight || 1;
-
-  const scale = Math.min(width / vw, height / vh);
-
-  const drawWidth = vw * scale;
-  const drawHeight = vh * scale;
-
-  const offsetX = x + (width - drawWidth) / 2;
-  const offsetY = y + (height - drawHeight) / 2;
-
-  ctx.drawImage(
-    video,
-    0,
-    0,
-    vw,
-    vh,
-    offsetX,
-    offsetY,
-    drawWidth,
-    drawHeight
-  );
-}
-
 function drawCoverVideo(ctx, video, x, y, width, height, options = {}) {
   const vw = video.videoWidth || 1;
   const vh = video.videoHeight || 1;
@@ -725,11 +700,31 @@ function drawContainVideo(ctx, video, x, y, width, height) {
   ctx.drawImage(video, 0, 0, vw, vh, drawX, drawY, drawWidth, drawHeight);
 }
 
+// A full-resolution ctx.filter="blur(34px)" costs several ms per frame at
+// 1920x1080 and starves the recorder. Blur a downscaled copy instead and
+// upscale it — visually equivalent, an order of magnitude cheaper.
+const blurCanvas = document.createElement("canvas");
+const blurCtx = blurCanvas.getContext("2d", { alpha: false });
+const BLUR_SCALE = 0.125;
+
 function drawBlurFillVideo(ctx, video, x, y, width, height, options = {}) {
-  // Background: intentionally enlarged/cropped/blurred
+  const bw = Math.max(1, Math.round(width * BLUR_SCALE));
+  const bh = Math.max(1, Math.round(height * BLUR_SCALE));
+
+  if (blurCanvas.width !== bw || blurCanvas.height !== bh) {
+    blurCanvas.width = bw;
+    blurCanvas.height = bh;
+  }
+
+  blurCtx.save();
+  blurCtx.filter = `blur(${Math.max(2, Math.round(34 * BLUR_SCALE))}px) brightness(0.62) saturate(1.2)`;
+  drawCoverVideo(blurCtx, video, -10, -10, bw + 20, bh + 20, options);
+  blurCtx.restore();
+
   ctx.save();
-  ctx.filter = "blur(34px) brightness(0.62) saturate(1.2)";
-  drawCoverVideo(ctx, video, x - 80, y - 80, width + 160, height + 160, options);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(blurCanvas, 0, 0, bw, bh, x, y, width, height);
   ctx.restore();
 
   ctx.save();
@@ -888,15 +883,7 @@ function drawFrame(ctx, canvas) {
   }
 
   if (hasScreen) {
-    if (state.layout.aspectRatio === "16:9" || state.layout.aspectRatio === "1:1") {
-      // Preserve full screen, no stretch
-      drawContainVideo(ctx, els.screenVideo, 0, 0, width, height);
-    } else {
-      // For vertical (reels), keep crop behavior
-      drawCoverVideo(ctx, els.screenVideo, 0, 0, width, height, {
-        horizontalAnchor: state.layout.screenCropAnchor,
-      });
-    }
+    drawScreenVideo(ctx, els.screenVideo, 0, 0, width, height);
   } else {
     ctx.fillStyle = "#0d1829";
     ctx.fillRect(0, 0, width, height);
@@ -959,17 +946,43 @@ function drawFrame(ctx, canvas) {
   ctx.restore();
 }
 
+const TARGET_FRAME_MS = 1000 / 30;
+let lastRecordDrawAt = 0;
+let drawWatchdogHandle = null;
+
+// requestAnimationFrame stops firing when the window is hidden, minimized, or
+// fully covered. If the record canvas stops being redrawn, its captureStream
+// keeps emitting the same frame and the recording looks frozen. So rAF is only
+// the fast path — a timer watchdog keeps painting when rAF goes quiet.
+function renderTick() {
+  const now = performance.now();
+  if (now - lastRecordDrawAt < TARGET_FRAME_MS - 1) return;
+  lastRecordDrawAt = now;
+
+  drawFrame(recordCtx, recordCanvas);
+
+  if (document.visibilityState === "visible") {
+    drawFrame(previewCtx, els.previewCanvas);
+    updateAudioTesterUI();
+  }
+}
+
 function startDrawLoop() {
   if (drawLoopHandle) cancelAnimationFrame(drawLoopHandle);
+  if (drawWatchdogHandle) clearInterval(drawWatchdogHandle);
 
   const loop = () => {
-    drawFrame(previewCtx, els.previewCanvas);
-    drawFrame(recordCtx, recordCanvas);
-    updateAudioTesterUI();
+    renderTick();
     drawLoopHandle = requestAnimationFrame(loop);
   };
 
   loop();
+
+  drawWatchdogHandle = setInterval(() => {
+    if (performance.now() - lastRecordDrawAt >= TARGET_FRAME_MS) {
+      renderTick();
+    }
+  }, TARGET_FRAME_MS);
 }
 
 function buildComposedStream() {
@@ -1303,6 +1316,7 @@ function updateLayoutFromControls() {
   state.layout.aspectRatio = els.aspectRatioSelect.value;
   state.layout.cameraShape = els.cameraShapeSelect.value;
   state.layout.overlayPosition = els.overlayPositionSelect.value;
+  state.layout.screenFitMode = els.screenFitModeSelect.value;
   state.layout.screenCropAnchor = els.screenCropAnchorSelect.value;
   state.layout.cameraSizePercent = Number(els.cameraSizeRange.value);
 
@@ -1427,6 +1441,19 @@ function bindEvents() {
   window.addEventListener("pointermove", handlePreviewPointerMove);
   window.addEventListener("pointerup", handlePreviewPointerUp);
 
+  // Coming back from hidden/minimized, the media elements are sometimes left
+  // paused. Nudge them so the canvas doesn't keep compositing a stale frame.
+  document.addEventListener("visibilitychange", () => {
+    logDiag("visibility-change", { visibility: document.visibilityState });
+    if (document.visibilityState !== "visible") return;
+
+    [els.screenVideo, els.cameraVideo].forEach((video) => {
+      if (video.srcObject && video.paused) {
+        void video.play().catch(() => {});
+      }
+    });
+  });
+
   window.electronAPI.onFfmpegStatus((message) => {
     setStatus(message);
   });
@@ -1435,8 +1462,8 @@ function bindEvents() {
 }
 
 async function init() {
-  updateCanvasSizes();
   bindEvents();
+  updateLayoutFromControls();
   startDrawLoop();
   updateAudioTesterUI();
   await refreshPermissions();
