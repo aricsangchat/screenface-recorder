@@ -61,3 +61,7 @@ Records the composited canvas plus microphone input. It does not yet merge syste
 - Preset templates for YouTube, Reels, and webinars
 - Face-cam background blur
 - Title bars / lower thirds
+
+## License
+
+MIT — see [LICENSE](LICENSE).
