@@ -340,7 +340,11 @@ button:disabled {
 }
 
 .status-pill {
-  display: block;
+  /* Clamp to two lines with an ellipsis. A long source name or ffmpeg error
+     must not grow the sidebar, but it should truncate cleanly, not get cut. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   padding: 6px 10px;
   border-radius: 10px;
   background: rgba(79, 140, 255, 0.14);
@@ -348,8 +352,6 @@ button:disabled {
   font-size: 12px;
   line-height: 1.35;
   margin-bottom: 6px;
-  /* Long ffmpeg/error text must not grow the sidebar past the window. */
-  max-height: 2.8em;
   overflow: hidden;
 }
 
