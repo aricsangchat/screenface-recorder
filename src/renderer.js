@@ -427,14 +427,75 @@ function updateAudioTesterUI() {
   }
 }
 
+function renderSourcesMessage({ title, body, actionLabel, action }) {
+  els.sourcesGrid.innerHTML = `
+    <div class="sources-message">
+      <div class="sources-message-title">${escapeHtml(title)}</div>
+      <p class="sources-message-body">${escapeHtml(body)}</p>
+      ${
+        actionLabel
+          ? `<button class="primary-btn" id="sourcesMessageAction">${escapeHtml(
+              actionLabel
+            )}</button>`
+          : ""
+      }
+    </div>
+  `;
+
+  const actionBtn = document.getElementById("sourcesMessageAction");
+  if (actionBtn && action) {
+    actionBtn.addEventListener("click", action);
+  }
+}
+
+function renderSourcesFailure(result) {
+  const needsScreenPermission = result.screenPermission !== "granted";
+
+  if (needsScreenPermission) {
+    renderSourcesMessage({
+      title: "macOS is blocking screen capture",
+      body:
+        "Screen Recording permission has not been granted to this app, so no screens or windows can be listed. Enable it in System Settings, then quit and reopen ScreenFace — macOS only applies the change on relaunch.",
+      actionLabel: "Open Screen Recording Settings",
+      action: () => window.electronAPI.openSystemSettings("screen"),
+    });
+    return;
+  }
+
+  renderSourcesMessage({
+    title: "Could not list screens or windows",
+    body: result.error || "Unknown error.",
+    actionLabel: "Try Again",
+    action: loadSources,
+  });
+}
+
 async function loadSources() {
   try {
     setStatus("Loading sources...");
-    state.allSources = await window.electronAPI.listDesktopSources();
+
+    const result = await window.electronAPI.listDesktopSources();
+
+    if (!result?.ok) {
+      state.allSources = [];
+      renderSourcesFailure(result || {});
+      setStatus(
+        result?.screenPermission !== "granted"
+          ? "Screen Recording permission is required."
+          : `Could not load sources: ${result?.error || "unknown error"}`
+      );
+      return;
+    }
+
+    state.allSources = result.sources;
     renderSourceCards();
-    setStatus("Sources loaded.");
+    setStatus(
+      result.sources.length ? "Sources loaded." : "No screens or windows found."
+    );
   } catch (error) {
     console.error(error);
+    state.allSources = [];
+    renderSourcesFailure({ error: error?.message, screenPermission: "unknown" });
     setStatus(`Could not load sources: ${error?.message || "unknown error"}`);
   }
 }
@@ -444,6 +505,19 @@ function renderSourceCards() {
     if (state.sourceFilter === "all") return true;
     return source.kind === state.sourceFilter;
   });
+
+  if (sources.length === 0) {
+    renderSourcesMessage({
+      title: "Nothing to show here",
+      body:
+        state.allSources.length > 0
+          ? "No sources match this tab. Try All, or refresh."
+          : "No screens or windows were found. Open the window you want to record, then refresh.",
+      actionLabel: "Refresh",
+      action: loadSources,
+    });
+    return;
+  }
 
   els.sourcesGrid.innerHTML = sources
     .map((source) => {

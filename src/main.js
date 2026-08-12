@@ -272,24 +272,52 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-ipcMain.handle("desktop-sources:list", async () => {
-  const sources = await desktopCapturer.getSources({
-    types: ["screen", "window"],
-    fetchWindowIcons: true,
-    thumbnailSize: {
-      width: 320,
-      height: 200,
-    },
-  });
+function getScreenPermissionStatus() {
+  if (process.platform !== "darwin") return "granted";
 
-  return sources.map((source) => ({
-    id: source.id,
-    name: source.name,
-    displayId: source.display_id,
-    kind: source.id.startsWith("screen:") ? "screen" : "window",
-    thumbnailDataUrl: safeNativeImageToDataURL(source.thumbnail),
-    appIconDataUrl: safeNativeImageToDataURL(source.appIcon),
-  }));
+  try {
+    return systemPreferences.getMediaAccessStatus("screen");
+  } catch (_error) {
+    return "unknown";
+  }
+}
+
+// Returns a result object rather than throwing: an exception here crosses IPC
+// as "Error invoking remote method ...", which hides the real cause (usually a
+// missing Screen Recording grant) from the UI.
+ipcMain.handle("desktop-sources:list", async () => {
+  const screenPermission = getScreenPermissionStatus();
+
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["screen", "window"],
+      fetchWindowIcons: true,
+      thumbnailSize: {
+        width: 320,
+        height: 200,
+      },
+    });
+
+    return {
+      ok: true,
+      screenPermission,
+      sources: sources.map((source) => ({
+        id: source.id,
+        name: source.name,
+        displayId: source.display_id,
+        kind: source.id.startsWith("screen:") ? "screen" : "window",
+        thumbnailDataUrl: safeNativeImageToDataURL(source.thumbnail),
+        appIconDataUrl: safeNativeImageToDataURL(source.appIcon),
+      })),
+    };
+  } catch (error) {
+    const message = error?.message || "Failed to get sources.";
+    appendRuntimeLog(
+      `[main:ERROR] getSources failed (screen=${screenPermission}): ${message}`
+    );
+
+    return { ok: false, error: message, screenPermission, sources: [] };
+  }
 });
 
 ipcMain.handle("desktop-sources:select", async (_event, { sourceId }) => {

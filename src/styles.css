@@ -445,6 +445,33 @@ button:disabled {
   gap: 12px;
 }
 
+/* Explains an empty grid (permission denied, load failure, filtered to nothing)
+   instead of leaving the modal blank. Spans the whole grid. */
+.sources-message {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 36px 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.sources-message-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sources-message-body {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .source-card {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
