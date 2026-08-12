@@ -2,6 +2,8 @@
 
 An Electron app for recording your desktop and face cam together, with switchable layouts for vertical, square, and widescreen content. Exports MP4.
 
+![ScreenFace Recorder](docs/screenshot.png)
+
 ## Features
 
 - In-app screen/window picker with live source thumbnails

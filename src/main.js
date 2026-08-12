@@ -79,7 +79,6 @@ function createWindow() {
   appendRuntimeLog("[main:LOG] BrowserWindow created");
 
   mainWindow.loadFile(path.join(__dirname, "index.html"));
-
 }
 
 function safeNativeImageToDataURL(image) {
